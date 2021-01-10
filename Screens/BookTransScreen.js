@@ -80,26 +80,114 @@ export default class BookTransScreen extends React.Component{
         ToastAndroid.show("Book Returned", ToastAndroid.SHORT)
     }
 
-    handleTransaction = async() => {
-        var transactionMessage = null
-        db.collection("Books").doc(this.state.scannedBook).get()
-        .then((doc) => {
-            var book = doc.data()
-            if (book.bookAvailability){
-                this.initiateBookIssue()
-                transactionMessage = "Book Issued"
+    checkBookEligibility = async() => {
+        const bookRef = await db.collection("Books").where("bookID", "==", this.state.scannedBook).get()
+        var transactiontype = ""
+
+        if(bookRef.docs.length === 0){
+            transactiontype = false
+        }
+        else{
+            bookRef.docs.map((doc) => {
+                var book = doc.data()
+
+                if(book.bookAvailability){
+                    transactiontype = "issue"
+                }
+                else{
+                    transactiontype = "return"
+                }
+            })
+        }
+
+        return transactiontype
+    }
+
+    checkStudentEligibilityForIssue = async() => {
+        const studentRef = await db.collection("Students").where("studentID", "==", this.state.scannedStudent).get()
+        var isStudentEligible = ""
+
+        if(studentRef.docs.length === 0){
+            isStudentEligible = false
+            Alert.alert("Student not Present In Database")
+
+            this.setState({
+                scannedBook: '',
+                scannedStudent: ''
+            })
+        }
+        else{
+            studentRef.docs.map((doc) => {
+                var student = doc.data()
+
+                if(student.numberOfBooksIssued < 2){
+                    isStudentEligible = true
+                }
+                else{
+                    isStudentEligible = false
+                    Alert.alert("Student Has Already Issued 2 Books")
+
+                    this.setState({
+                        scannedBook: '',
+                        scannedStudent: ''
+                    })
+                }
+            })
+        }
+
+        return isStudentEligible
+    }
+
+    checkStudentEligibilityForReturn = async() => {
+        const transactionRef = await db.collection("transaction").where("BookID", "==", this.state.scannedBook).limit(1).get()
+        var isStudentEligible = ""
+
+        transactionRef.docs.map((doc) => {
+            var lastTransaction = doc.data()
+
+            if(lastTransaction.StudentID === this.state.scannedStudent){
+                isStudentEligible = true
             }
             else{
-                this.initiateBookReturn()
-                transactionMessage = "Book Returned"
+                isStudentEligible = false
+                Alert.alert("Book Was Not Issued By This Student")
+
+                this.setState({
+                    scannedBook: '',
+                    scannedStudent: ''
+                })
             }
         })
 
-        this.setState({
-            transactionMessage: transactionMessage,
-            scannedBook: '',
-            scannedStudent: '',
-        })
+        return isStudentEligible
+    }
+
+    handleTransaction = async() => {
+        var transactiontype = await this.checkBookEligibility()
+
+        if(!transactiontype){
+            Alert.alert("Book Not Present In Library")
+            this.setState({
+                scannedBook: '',
+                scannedStudent: ''
+            })
+        }
+        else if(transactiontype === "issue"){
+            var isStudentEligible = await this.checkStudentEligibilityForIssue()
+
+            if(isStudentEligible){
+                this.initiateBookIssue()
+            }
+        }
+        else if(transactiontype === "return"){
+            console.log("hi")
+            var isStudentEligible = await this.checkStudentEligibilityForReturn()
+            console.log("StudentEligible" + isStudentEligible)
+
+            if(isStudentEligible){
+                this.initiateBookReturn()
+            }
+        }
     }
 
     render(){   
@@ -123,16 +211,15 @@ export default class BookTransScreen extends React.Component{
                                       behavior = "padding" enabled
                 >
                     <View>
-                        <View>
-                            <Image  source = {require("../assets/booklogo.jpg")}
-                                    style = {{width: 100, height: 100, marginLeft: 10}}
-                            />
-                            <Text style = {{fontSize: 65,
-                                            fontWeight: 'bold'}}>
-                                Wily
-                            </Text>
-                        </View>
-
+                        <Image  source = {require("../assets/booklogo.jpg")}
+                                style = {{width: 100, height: 100, marginLeft: 10}}
+                        />
+                        <Text style = {{fontSize: 65,
+                                        fontWeight: 'bold'}}>
+                            Wily
+                        </Text>
+                    </View>
+                    <View>
                         <View style = {{flexDirection: "row",
                                         justifyContent: "center",
                                         alignItems: "center",

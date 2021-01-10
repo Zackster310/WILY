@@ -2,9 +2,10 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { StyleSheet, Text, View, Image } from 'react-native';
 import { createBottomTabNavigator } from 'react-navigation-tabs';
-import { createAppContainer } from 'react-navigation';
+import { createAppContainer, createSwitchNavigator } from 'react-navigation';
 import BookTransScreen from './Screens/BookTransScreen';
 import BookSearchScreen from './Screens/BooksearchScreen';
+import LoginScreen from './Screens/LoginScreen';
 
 export default class App extends React.Component{
   render(){
@@ -32,7 +33,11 @@ const TabNavigator = createBottomTabNavigator({
   })
 })
 
-const AppContainer = createAppContainer(TabNavigator)
+const SwitchNavigator = createSwitchNavigator({
+  LoginScreen: {screen: LoginScreen}, TabNavigator: {screen: TabNavigator}
+})
+
+const AppContainer = createAppContainer(SwitchNavigator)
 
 const styles = StyleSheet.create({
   container: {
